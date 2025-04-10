@@ -11,7 +11,8 @@
     "start": "node ./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "China-City-List-latest.csv"
   ],
   "keywords": [
     "mcp"
