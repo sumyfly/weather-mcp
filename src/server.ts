@@ -22,15 +22,17 @@ export function createServer(): McpServer {
 
   server.tool(
     "get_weather",
-    "Get weather info for a given city.",
+    "Get weather info for a given city and date. If date is provided, get the weather for that date. date is optional. date format: YYYY-MM-DD",
     {
       city: z.string().describe("city name"),
+      date: z.string().optional().describe("date"),
     },
-    async ({ city }) => {
+    async ({ city, date }) => {
+      console.log("city:", city, "date", date);
       if (!city) {
         throw new Error("city name is required.");
       }
-      const weather = await getWeather(city);
+      const weather = await getWeather(city, date);
       return {
         content: [
           {
@@ -45,7 +47,7 @@ export function createServer(): McpServer {
   return server;
 }
 
-export const getWeather = async (city: string) => {
+export const getWeather = async (city: string, date: string | undefined) => {
   const location = findLocationId(city);
   if (!location) {
     return {
@@ -57,16 +59,27 @@ export const getWeather = async (city: string) => {
       ],
     };
   }
-  const url = `https://nh3tefdpke.re.qweatherapi.com/v7/weather/now?location=${encodeURIComponent(
+  let url = `https://nh3tefdpke.re.qweatherapi.com/v7/weather/now?location=${encodeURIComponent(
     location
   )}&key=${API_KEY}`;
+
+  if (date) {
+    url = `https://nh3tefdpke.re.qweatherapi.com/v7/weather/7d?location=${encodeURIComponent(
+      location
+    )}&key=${API_KEY}`;
+  }
 
   try {
     const response = await fetch(url);
     const weatherData = await response.json();
     console.log("天气数据:", weatherData);
     console.log("当前天气:", weatherData.now);
-    return weatherData.now;
+    // return weatherData.now;
+    if (!date) {
+      return weatherData.now;
+    } else {
+      return weatherData.daily.find((item: any) => item.fxDate === date);
+    }
   } catch (error) {
     console.error("请求失败:", error);
   }
@@ -91,12 +104,17 @@ export const findLocationId = (city: string) => {
   let target: any = null;
   if (isEnglish) {
     target = records.find(
-      record => record.Adm1_Name_EN === city || record.Adm2_Name_EN === city
+      record =>
+        record.Location_Name_EN === city ||
+        record.Adm1_Name_EN === city ||
+        record.Adm2_Name_EN === city
     );
   } else {
     target = records.find(
       record =>
-        record.Adm1_Name_ZH.includes(city) || record.Adm2_Name_ZH.includes(city)
+        record.Location_Name_ZH.includes(city) ||
+        record.Adm1_Name_ZH.includes(city) ||
+        record.Adm2_Name_ZH.includes(city)
     );
   }
 
